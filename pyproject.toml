@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-mobile-pass"
+version = "0.1.0"
+description = "Generate Apple Wallet and Google Wallet passes from a reusable Django app."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  {name = "OpenAI Codex"}
+]
+dependencies = [
+  "Django>=5.2",
+  "cryptography>=42.0.0",
+  "PyJWT>=2.8.0",
+  "requests>=2.31.0",
+]
+keywords = ["django", "wallet", "apple-wallet", "google-wallet", "pkpass"]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-django>=4.8",
+]
+
+[tool.setuptools.packages.find]
+include = ["django_mobile_pass*"]
