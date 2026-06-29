@@ -38,7 +38,7 @@ Need a wallet pass?
 
 | Platform | Pattern |
 |----------|---------|
-| Apple | `mobile_pass.update_field("gate", "B12", change_message="Gate changed to %@")` |
+| Apple | `mobile_pass.update_field("gate", "B12", change_message="Gate changed to :value")` |
 | Google | Mutate `mobile_pass.content["googleObjectPayload"]`, then `mobile_pass.save()` |
 | Either | Set `push_updates_on_save: True` (default) so wallets refresh automatically |
 

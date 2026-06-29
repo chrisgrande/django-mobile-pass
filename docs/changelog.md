@@ -7,11 +7,10 @@ weight: 91
 
 ## Unreleased
 
-- Added per-type Apple and Google payload validators (`django_mobile_pass.validation`).
-- Added optional queue-backed pass update delivery via `MOBILE_PASS.queue` (Celery or custom callable).
-- Added subclass validation for custom models, actions, and builders in `django_mobile_pass.registry`.
-- `google.origins` now defaults to `[public_url]` when not set explicitly.
-- Added [`AGENTS.md`](../AGENTS.md), [feature matrix](feature-matrix.md), and [agent integration guide](agent-integration.md).
+- Expanded [`AGENTS.md`](../AGENTS.md) with `MobilePass` API, exceptions, `PkPassReader`, and corrected `HasMobilePasses` usage.
+- Fixed incorrect `PkPassReader` examples in the testing guide.
+- Added documentation drift tests for `PkPassReader` and `HasMobilePasses` APIs.
+- Expanded the reading stored passes guide with common fields and related-row helpers.
 
 ## Previous
 
