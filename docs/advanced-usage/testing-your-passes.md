@@ -56,13 +56,11 @@ self.assertEqual(payload["eventTicket"]["primaryFields"][0]["key"], "event")
 ## Inspecting .pkpass archives
 
 ```python
-from io import BytesIO
-
 from django_mobile_pass.apple.reader import PkPassReader
 
 archive = mobile_pass.generate()
-reader = PkPassReader(BytesIO(archive))
-pass_json = reader.pass_data()
+reader = PkPassReader.from_bytes(archive)
+pass_json = reader.pass_properties()
 
 self.assertEqual(pass_json["description"], "Event")
 ```

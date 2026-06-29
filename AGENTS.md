@@ -2,7 +2,7 @@
 
 This repository ships **django-mobile-pass** — a Django 5.2+ package for **Apple Wallet** (PassKit / `.pkpass`) and **Google Wallet** (Wallet Objects API).
 
-Use this file when an agent needs to integrate, extend, or debug wallet passes inside a Django application.
+Use this file when an agent needs to integrate, extend, or debug wallet passes inside a Django application. For longer integration walkthroughs, see [`docs/agent-integration.md`](docs/agent-integration.md).
 
 ## What the two wallet systems are
 
@@ -32,14 +32,14 @@ MOBILE_PASS = {
         "organization_name": "Example Inc",
         "type_identifier": "pass.com.example.tickets",
         "team_identifier": "ABCDE12345",
-        "certificate_path": "/path/to/pass.p12",
+        "certificate_path": "/path/to/pass.p12",  # or inline base64 via "certificate"
         "certificate_password": "secret",
         "webservice_secret": "long-random-string-min-16-chars",
         "webservice_host": "https://example.com",
     },
     "google": {
         "issuer_id": "3388000000022791700",
-        "service_account_key_path": "/path/to/service-account.json",
+        "service_account_key_path": "/path/to/service-account.json",  # or inline via "service_account_key"
         "origins": ["https://example.com"],  # defaults to public_url when omitted
     },
 }
@@ -58,6 +58,9 @@ MOBILE_PASS = {
 | Builder / action / model resolution | `django_mobile_pass.registry` |
 | Payload validation | `django_mobile_pass.validation` |
 | Settings wrapper | `django_mobile_pass.settings.get_mobile_pass_settings()` |
+| Inspect `.pkpass` archives | `django_mobile_pass.apple.reader.PkPassReader` |
+| Enums (`Platform`, `PassType`, `BarcodeType`, …) | `django_mobile_pass.enums` |
+| Typed exceptions | `django_mobile_pass.exceptions` |
 
 ## Issuing passes
 
@@ -110,22 +113,46 @@ return mobile_pass.to_response(request)  # or mobile_pass.add_to_wallet_url()
 
 Resolve custom builders via `MOBILE_PASS["builders"]`. Overrides must subclass `ApplePassBuilder` or `GooglePassBuilder`.
 
+## `MobilePass` model API
+
+| Method / property | Platform | Purpose |
+|-------------------|----------|---------|
+| `download_response()` / `download()` | Apple | Return `.pkpass` bytes or HTTP response |
+| `add_to_wallet_url(request=None)` | Both | Signed Apple URL or Google Save-to-Wallet URL |
+| `to_response()` | Both | Apple download response or Google redirect |
+| `email_attachment()` | Apple | `(filename, bytes, mime)` tuple for email |
+| `builder()` | Apple | Rehydrate stored pass into an updateable builder |
+| `update_field(key, value, change_message=…)` | Apple | Update one field and save (use `:value` placeholder in change messages) |
+| `expire()` | Both | Mark pass void/expired in wallet content |
+| `is_currently_in_wallet()` | Both | Apple registrations exist, or latest Google callback was `save` |
+| `is_currently_saved_to_google_wallet()` | Google | Latest Google callback event was `save` |
+| `attach_to(instance)` | Both | Link pass to a domain model via generic foreign key |
+| `generate()` | Apple | Raw signed `.pkpass` bytes |
+| `registrations()` / `devices()` | Apple | Related PassKit registration rows |
+
+Query scopes on `MobilePass.objects`:
+
+```python
+MobilePass.objects.apple()
+MobilePass.objects.google()
+```
+
 ## HTTP routes (mount under site root)
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST/DELETE | `/passkit/v1/devices/{device_id}/registrations/{pass_type_id}/{pass_serial}` | Apple register/unregister |
-| GET | `/passkit/v1/passes/{pass_type_id}/{pass_serial}` | Apple update check + download |
-| GET | `/passkit/v1/devices/{device_id}/registrations/{pass_type_id}` | Apple associated serials |
-| POST | `/passkit/v1/log` | Apple Wallet client logs |
-| GET | `/passkit/v1/apple/{mobile_pass_id}/download?signature=…` | Signed `.pkpass` download |
-| POST | `/passkit/v1/google/callbacks` | Google ECv2 save/remove callbacks |
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST/DELETE | `/passkit/v1/devices/{device_id}/registrations/{pass_type_id}/{pass_serial}` | `ApplePass` | Apple register/unregister |
+| GET | `/passkit/v1/passes/{pass_type_id}/{pass_serial}` | `ApplePass` | Apple update check + download |
+| GET | `/passkit/v1/devices/{device_id}/registrations/{pass_type_id}` | `ApplePass` | Apple associated serials |
+| POST | `/passkit/v1/log` | None | Apple Wallet client logs |
+| GET | `/passkit/v1/apple/{mobile_pass_id}/download?signature=…` | HMAC signature | Signed `.pkpass` download |
+| POST | `/passkit/v1/google/callbacks` | ECv2 | Google save/remove callbacks |
 
 `pass_serial` in PassKit routes is the `MobilePass` UUID primary key.
 
 ## Updating passes after issue
 
-- **Apple** — hydrate builder from stored pass, change fields, `save()`; or `mobile_pass.update_field(key, value, change_message=...)`.
+- **Apple** — hydrate builder from stored pass, change fields, `save()`; or `mobile_pass.update_field(key, value, change_message="Gate changed to :value")`.
 - **Google** — update `content["googleObjectPayload"]` on the `MobilePass` and `save()`; the package PATCHes the Google object.
 - **Notifications** — when `push_updates_on_save` is `True`, saving an existing pass dispatches Apple APNs and/or Google PATCH.
 
@@ -165,10 +192,14 @@ class Order(models.Model, HasMobilePasses):
 ```
 
 ```python
-order.mobile_passes.create(...)  # via builder .save() with content_object=order
-order.mobile_passes.apple()
-order.mobile_passes.google()
+order.add_mobile_pass(mobile_pass)  # or builder .save() with content_object=order
+order.apple_passes()
+order.google_passes()
+order.first_apple_pass()
+order.first_google_pass()
 ```
+
+Use `order.apple_passes()` / `order.google_passes()` on model instances. The generic relation manager does not expose queryset helpers like `.apple()` directly.
 
 ## Customization hooks
 
@@ -178,6 +209,8 @@ order.mobile_passes.google()
 | `actions.*` | respective default action class |
 | `builders.apple.*` / `builders.google.*` | `ApplePassBuilder` / `GooglePassBuilder` |
 
+Built-in action keys: `register_device`, `unregister_device`, `notify_apple_of_pass_update`, `notify_google_of_pass_update`, `handle_google_callback`.
+
 ## Signals
 
 - `mobile_pass_added` — Apple device registered or Google save callback
@@ -186,7 +219,28 @@ order.mobile_passes.google()
 
 ## Validation
 
-Per-type validators in `django_mobile_pass.validation` validate pass payloads before save/API insert. Builders call `validator_class().validate(payload)` automatically.
+Per-type validators in `django_mobile_pass.validation` validate pass payloads before save/API insert. Builders call `validator_class().validate(payload)` automatically. Validation failures raise `InvalidPass`.
+
+## Inspecting `.pkpass` archives
+
+```python
+from django_mobile_pass.apple.reader import PkPassReader
+
+archive = mobile_pass.generate()
+reader = PkPassReader.from_bytes(archive)
+pass_json = reader.pass_properties()
+```
+
+## Exceptions
+
+| Exception | Typical cause |
+|-----------|---------------|
+| `InvalidPass` | Builder payload validation failed |
+| `InvalidConfig` | Missing or malformed `MOBILE_PASS` settings |
+| `InvalidCertificate` | Apple PKCS#12 cannot be read or signed |
+| `ImageNotFound` | Local Apple image path missing |
+| `CannotDownload` / `PlatformDoesntSupport` | Platform-specific helper used on wrong pass type |
+| `AppleWalletRequestFailed` / `GoogleWalletRequestFailed` | Outbound APNs or Google API error |
 
 ## Testing
 
@@ -211,6 +265,8 @@ Use `tests/` for PassKit routes, signing, ECv2 verification, and builder behavio
 3. **Google `origins`** must include your site origin for Save-to-Wallet JWTs (defaults from `public_url` when not set).
 4. **Certificate / service account secrets** belong in environment or secret stores, never committed.
 5. **Pass serial in PassKit** is the Django `MobilePass.pk`, not necessarily `pass.json` `serialNumber`.
+6. **HasMobilePasses filtering** — use `instance.apple_passes()` / `instance.google_passes()`; the generic relation manager does not expose queryset helpers like `.apple()` directly.
+7. **Apple change messages** — use the `:value` placeholder; it is converted to Apple's `%@` token automatically.
 
 ## Agent workflow summary
 
