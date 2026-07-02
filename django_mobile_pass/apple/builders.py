@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
 from django.apps import apps
 from django.conf import settings as django_settings
@@ -293,8 +294,14 @@ class ApplePassBuilder:
     def generate(self) -> bytes:
         return build_pkpass(self.data(), self.images, get_mobile_pass_settings().apple)
 
-    def save(self) -> "MobilePass":
+    def save(self, content_object=None) -> "MobilePass":
         model_class = self._mobile_pass_model()
+
+        # Apple Wallet calls the PassKit web service with the serialNumber from
+        # pass.json, so the default serial must resolve back to the stored row.
+        if self.model is None and not self.serial_number:
+            self.serial_number = str(uuid4())
+
         payload = self.data()
         image_payload = {name: image.to_dict() for name, image in self.images.items()}
 
@@ -305,17 +312,29 @@ class ApplePassBuilder:
             self.model.platform = Platform.APPLE
             self.model.builder_name = self.name()
             self.model.type = self.type
-            self.model.save(update_fields=["content", "images", "download_name", "platform", "builder_name", "type", "updated_at"])
+            update_fields = ["content", "images", "download_name", "platform", "builder_name", "type", "updated_at"]
+            if content_object is not None:
+                self.model.content_object = content_object
+                update_fields += ["content_type", "object_id"]
+            self.model.save(update_fields=update_fields)
             return self.model
 
-        self.model = model_class.objects.create(
-            type=self.type,
-            platform=Platform.APPLE,
-            builder_name=self.name(),
-            content=payload,
-            images=image_payload,
-            download_name=self.download_name,
-        )
+        create_kwargs = {
+            "type": self.type,
+            "platform": Platform.APPLE,
+            "builder_name": self.name(),
+            "content": payload,
+            "images": image_payload,
+            "download_name": self.download_name,
+        }
+        if content_object is not None:
+            create_kwargs["content_object"] = content_object
+        try:
+            create_kwargs["id"] = UUID(str(self.serial_number))
+        except ValueError:
+            pass
+
+        self.model = model_class.objects.create(**create_kwargs)
         return self.model
 
     def _compile_data(self) -> dict:
