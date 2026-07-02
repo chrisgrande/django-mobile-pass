@@ -35,5 +35,3 @@ __all__ = [
     "OfferPassClass",
     "StoreCardPassBuilder",
 ]
-
-default_app_config = "django_mobile_pass.apps.DjangoMobilePassConfig"

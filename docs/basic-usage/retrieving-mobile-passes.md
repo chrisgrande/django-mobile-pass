@@ -23,7 +23,7 @@ google_passes = MobilePass.objects.google()
 mobile_pass = MobilePass.objects.get(pk=pass_uuid)
 ```
 
-PassKit web service routes use the `MobilePass` UUID (`pk`) as the path `pass_serial`, not the human-readable `serialNumber` inside `pass.json`.
+PassKit web service routes resolve the path `pass_serial` using the `serialNumber` inside `pass.json`, falling back to the `MobilePass` UUID (`pk`). Passes issued without an explicit serial number use the pk as their serial, so both values match by default.
 
 ## Attaching to your models
 

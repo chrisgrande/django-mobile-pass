@@ -8,7 +8,7 @@ weight: 2
 - Python 3.11+
 - Django 5.2+
 - `django.contrib.contenttypes` in `INSTALLED_APPS`
-- `cryptography`, `PyJWT`, and `requests`
+- `cryptography`, `PyJWT`, `requests`, and `httpx[http2]` (APNs update pushes require HTTP/2)
 - A configured Django cache backend for Google ECv2 callback verification in production
 - Apple Wallet pass certificate for Apple passes
 - Google Wallet issuer account and service account key for Google passes

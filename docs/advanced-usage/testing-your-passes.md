@@ -36,7 +36,7 @@ class PasskitTests(TestCase):
         self.assertEqual(response.status_code, 201)
 ```
 
-Routes use the `MobilePass` UUID as `pass_serial`, not the `serialNumber` in `pass.json`.
+Routes resolve `pass_serial` using the `serialNumber` in `pass.json`, falling back to the `MobilePass` UUID. Passes issued without an explicit serial use the UUID for both, so either value works here.
 
 ## Asserting compiled payloads
 
@@ -78,16 +78,19 @@ def test_google_pass_save(mock_insert):
 
 ## Mocking APNs update notifications
 
+APNs pushes are sent over HTTP/2 with `httpx`, so mock `httpx.Client`:
+
 ```python
 from unittest.mock import MagicMock, patch
 
 from django_mobile_pass.actions import NotifyAppleOfPassUpdateAction
 
 @patch.object(NotifyAppleOfPassUpdateAction, "_certificate_file")
-@patch("requests.post")
-def test_push_update(post, certificate_file):
+@patch("httpx.Client")
+def test_push_update(client_cls, certificate_file):
     certificate_file.return_value = MagicMock(name="/tmp/cert.pem")
-    post.return_value = MagicMock(ok=True, status_code=200, json=lambda: {})
+    client = client_cls.return_value.__enter__.return_value
+    client.post.return_value = MagicMock(status_code=200, is_success=True, json=lambda: {})
     NotifyAppleOfPassUpdateAction().execute(mobile_pass)
 ```
 
