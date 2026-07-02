@@ -13,7 +13,7 @@ from django_mobile_pass.models import (
     GoogleMobilePassEvent,
     MobilePass,
 )
-from django_mobile_pass.registry import get_action_class, get_model_class
+from django_mobile_pass.registry import get_model_class
 from django_mobile_pass.settings import get_mobile_pass_settings
 from django_mobile_pass.signals import mobile_pass_added, mobile_pass_removed
 
@@ -81,17 +81,17 @@ class NotifyAppleOfPassUpdateAction:
             self.notify_update(registration)
 
     def notify_update(self, registration) -> None:
-        import requests
+        # APNs only speaks HTTP/2, so use httpx instead of requests.
+        import httpx
 
         cert_file = self._certificate_file()
         try:
-            response = requests.post(
-                registration.apple_update_url(),
-                headers={"apns-topic": registration.pass_type_id},
-                json={},
-                cert=cert_file.name,
-                timeout=30,
-            )
+            with httpx.Client(http2=True, cert=cert_file.name, timeout=30) as client:
+                response = client.post(
+                    registration.apple_update_url(),
+                    headers={"apns-topic": registration.pass_type_id},
+                    json={},
+                )
         finally:
             cert_file.close()
 
@@ -99,7 +99,7 @@ class NotifyAppleOfPassUpdateAction:
             registration.delete()
             return
 
-        if not response.ok:
+        if not response.is_success:
             payload = {}
             try:
                 payload = response.json()
