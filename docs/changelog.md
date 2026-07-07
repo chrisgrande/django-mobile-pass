@@ -7,6 +7,14 @@ weight: 91
 
 ## Unreleased
 
+- **Fixed**: PassKit web service routes now resolve `pass_serial` using the `serialNumber` inside `pass.json` (with a primary-key fallback), and Apple passes issued without an explicit serial use the `MobilePass` UUID for both, so device registration and update checks work end to end.
+- **Fixed**: `HasMobilePasses` is now an abstract model so its `mobile_passes` generic relation is actually contributed to concrete models. Inherit it directly (`class Order(HasMobilePasses)`) or list it before other bases.
+- **Fixed**: APNs update notifications are sent over HTTP/2 via `httpx` (Apple's push API rejects HTTP/1.1 connections). `httpx[http2]` is now a dependency.
+- **Fixed**: `If-Modified-Since` handling in the pass update endpoint now truncates microseconds (`Last-Modified` has second precision) and tolerates naive or malformed header values, so devices receive `304 Not Modified` correctly.
+- Added `content_object=` support to Apple and Google builder `save()` so passes can be attached to a domain model at creation time.
+- `MobilePass.to_response()` accepts an optional `request` argument as documented.
+- PassKit views now honor custom `MOBILE_PASS` model overrides (`model`, `apple_registration_model`) instead of hard-coding the defaults.
+- The associated-serials endpoint returns the `pass.json` serial numbers devices actually use for follow-up requests.
 - Expanded [`AGENTS.md`](../AGENTS.md) with `MobilePass` API, exceptions, `PkPassReader`, and corrected `HasMobilePasses` usage.
 - Fixed incorrect `PkPassReader` examples in the testing guide.
 - Added documentation drift tests for `PkPassReader` and `HasMobilePasses` APIs.

@@ -6,12 +6,12 @@ app_name = "django_mobile_pass"
 
 urlpatterns = [
     path(
-        "passkit/v1/devices/<str:device_id>/registrations/<str:pass_type_id>/<uuid:pass_serial>",
+        "passkit/v1/devices/<str:device_id>/registrations/<str:pass_type_id>/<str:pass_serial>",
         views.device_registration,
         name="register-device",
     ),
     path(
-        "passkit/v1/passes/<str:pass_type_id>/<uuid:pass_serial>",
+        "passkit/v1/passes/<str:pass_type_id>/<str:pass_serial>",
         views.check_for_updates,
         name="check-for-updates",
     ),

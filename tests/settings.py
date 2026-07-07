@@ -7,6 +7,7 @@ ALLOWED_HOSTS = ["testserver"]
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django_mobile_pass",
+    "tests",
 ]
 
 DATABASES = {

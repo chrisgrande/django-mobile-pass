@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import hmac
-from datetime import datetime, timezone as dt_timezone
+from datetime import timezone as dt_timezone
 from email.utils import parsedate_to_datetime
 
+from django.core.exceptions import ValidationError
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -12,19 +13,26 @@ from django.http import (
     HttpResponseNotModified,
     JsonResponse,
 )
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.http import http_date
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from django_mobile_pass.actions import HandleGoogleCallbackAction, RegisterDeviceAction, UnregisterDeviceAction
+from django_mobile_pass.actions import (
+    HandleGoogleCallbackAction,
+    RegisterDeviceAction,
+    UnregisterDeviceAction,
+    apple_registration_model,
+    mobile_pass_model,
+)
 from django_mobile_pass.enums import Platform
 from django_mobile_pass.google.callback_verification import (
     GoogleCallbackVerificationError,
     PROTOCOL_VERSION,
     verify_and_decode,
 )
-from django_mobile_pass.models import AppleMobilePassRegistration, MobilePass
+from django_mobile_pass.models import MobilePass
 from django_mobile_pass.registry import get_action_class
 from django_mobile_pass.settings import get_mobile_pass_settings
 from django_mobile_pass.signals import apple_mobile_pass_logs_received
@@ -86,6 +94,25 @@ def _stored_pass_matches_type(mobile_pass: MobilePass, pass_type_id: str) -> boo
     return expected is None or expected == pass_type_id
 
 
+def _find_pass_by_serial(pass_serial) -> MobilePass:
+    """Resolve a PassKit serial to a stored pass.
+
+    Apple Wallet uses the serialNumber embedded in pass.json when it calls the
+    web service, so match that first and fall back to the primary key.
+    """
+    model_class = mobile_pass_model()
+    serial = str(pass_serial)
+
+    mobile_pass = model_class.objects.filter(content__serialNumber=serial).first()
+    if mobile_pass is not None:
+        return mobile_pass
+
+    try:
+        return model_class.objects.get(pk=serial)
+    except (model_class.DoesNotExist, ValueError, ValidationError):
+        raise model_class.DoesNotExist()
+
+
 @csrf_exempt
 @require_http_methods(["POST", "DELETE"])
 def device_registration(request, device_id: str, pass_type_id: str, pass_serial):
@@ -104,8 +131,19 @@ def register_device(request, device_id: str, pass_type_id: str, pass_serial):
 
     body = _json_body(request)
     push_token = str(body.get("pushToken", ""))
-    if not _valid_path_value(device_id) or not _valid_path_value(pass_type_id) or not push_token or len(push_token) > 512:
+    if (
+        not _valid_path_value(device_id)
+        or not _valid_path_value(pass_type_id)
+        or not _valid_path_value(str(pass_serial))
+        or not push_token
+        or len(push_token) > 512
+    ):
         return HttpResponseBadRequest("Invalid PassKit registration payload.")
+
+    try:
+        mobile_pass = _find_pass_by_serial(pass_serial)
+    except MobilePass.DoesNotExist:
+        return HttpResponseNotFound()
 
     action_class = get_action_class(
         "register_device",
@@ -117,7 +155,7 @@ def register_device(request, device_id: str, pass_type_id: str, pass_serial):
             device_id=device_id,
             push_token=push_token,
             pass_type_id=pass_type_id,
-            pass_serial=str(pass_serial),
+            pass_serial=str(mobile_pass.pk),
         )
     except MobilePass.DoesNotExist:
         return HttpResponseNotFound()
@@ -131,11 +169,11 @@ def unregister_device(request, device_id: str, pass_type_id: str, pass_serial):
     if forbidden:
         return forbidden
 
-    if not _valid_path_value(device_id) or not _valid_path_value(pass_type_id):
+    if not _valid_path_value(device_id) or not _valid_path_value(pass_type_id) or not _valid_path_value(str(pass_serial)):
         return HttpResponseBadRequest("Invalid PassKit registration path.")
 
     try:
-        mobile_pass = MobilePass.objects.get(pk=pass_serial)
+        mobile_pass = _find_pass_by_serial(pass_serial)
     except MobilePass.DoesNotExist:
         return HttpResponseNotFound()
     if not _stored_pass_matches_type(mobile_pass, pass_type_id):
@@ -146,7 +184,7 @@ def unregister_device(request, device_id: str, pass_type_id: str, pass_serial):
         "django_mobile_pass.actions.UnregisterDeviceAction",
         base_class=UnregisterDeviceAction,
     )
-    action_class().execute(device_id=device_id, pass_serial=str(pass_serial))
+    action_class().execute(device_id=device_id, pass_serial=str(mobile_pass.pk))
     return HttpResponse(status=204)
 
 
@@ -157,7 +195,7 @@ def check_for_updates(request, pass_type_id: str, pass_serial):
         return forbidden
 
     try:
-        mobile_pass = MobilePass.objects.get(pk=pass_serial)
+        mobile_pass = _find_pass_by_serial(pass_serial)
     except MobilePass.DoesNotExist:
         return HttpResponseNotFound()
     if not _stored_pass_matches_type(mobile_pass, pass_type_id):
@@ -170,8 +208,14 @@ def check_for_updates(request, pass_type_id: str, pass_serial):
         since = None
     updated_at = mobile_pass.updated_at
 
-    if since is not None and updated_at <= since:
-        return HttpResponseNotModified()
+    if since is not None:
+        if timezone.is_naive(since):
+            since = since.replace(tzinfo=dt_timezone.utc)
+        if timezone.is_naive(updated_at):
+            since = timezone.make_naive(since, dt_timezone.utc)
+        # Last-Modified has second precision, so drop microseconds before comparing.
+        if updated_at.replace(microsecond=0) <= since:
+            return HttpResponseNotModified()
 
     response = HttpResponse(mobile_pass.generate(), content_type="application/vnd.apple.pkpass")
     response["Last-Modified"] = http_date(updated_at.timestamp())
@@ -190,7 +234,7 @@ def associated_serials(request, device_id: str, pass_type_id: str):
     updated_since = request.GET.get("passesUpdatedSince")
     updated_since_dt = parse_datetime(updated_since) if updated_since else None
 
-    queryset = AppleMobilePassRegistration.objects.select_related("mobile_pass").filter(
+    queryset = apple_registration_model().objects.select_related("mobile_pass").filter(
         device_id=device_id,
         pass_type_id=pass_type_id,
     )
@@ -206,7 +250,12 @@ def associated_serials(request, device_id: str, pass_type_id: str):
     return JsonResponse(
         {
             "lastUpdated": last_updated,
-            "serialNumbers": [str(registration.mobile_pass_id) for registration in registrations],
+            # Devices fetch passes by the serialNumber inside pass.json, so
+            # return that value (falling back to the primary key).
+            "serialNumbers": [
+                (registration.mobile_pass.content or {}).get("serialNumber") or str(registration.mobile_pass_id)
+                for registration in registrations
+            ],
         }
     )
 
@@ -227,9 +276,10 @@ def download_apple_pass(request, mobile_pass_id):
     signature = request.GET.get("signature", "")
     if not verify_signed_value(str(mobile_pass_id), signature):
         return HttpResponseForbidden("Invalid download signature.")
+    model_class = mobile_pass_model()
     try:
-        mobile_pass = MobilePass.objects.get(pk=mobile_pass_id)
-    except MobilePass.DoesNotExist:
+        mobile_pass = model_class.objects.get(pk=mobile_pass_id)
+    except model_class.DoesNotExist:
         return HttpResponseNotFound()
     return mobile_pass.download_response()
 

@@ -1,14 +1,26 @@
 from django.contrib.contenttypes.fields import GenericRelation
+from django.db import models
 
 from django_mobile_pass.enums import PassType, Platform
 
 
-class HasMobilePasses:
+class HasMobilePasses(models.Model):
+    """Abstract model mixin exposing the reverse relation to attached passes.
+
+    Inherit it directly (``class Order(HasMobilePasses)``) or alongside other
+    bases with the mixin first (``class Order(HasMobilePasses, models.Model)``).
+    It must be an abstract model — Django only wires up ``GenericRelation``
+    fields declared on model classes.
+    """
+
     mobile_passes = GenericRelation(
         "django_mobile_pass.MobilePass",
         content_type_field="content_type",
         object_id_field="object_id",
     )
+
+    class Meta:
+        abstract = True
 
     def add_mobile_pass(self, mobile_pass):
         mobile_pass.attach_to(self)

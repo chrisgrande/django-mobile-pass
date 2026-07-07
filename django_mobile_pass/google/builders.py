@@ -90,24 +90,27 @@ class GooglePassBuilder:
             raise InvalidPass("Call set_class() before saving a Google pass.")
         return f"{GoogleCredentials.issuer_id()}.{self.class_suffix}"
 
-    def save(self) -> "MobilePass":
+    def save(self, content_object=None) -> "MobilePass":
         payload = self.compile_google_object_payload()
         self.validate_payload(payload)
         GoogleWalletClient().insert_object(self.object_resource, self.object_id(), payload)
 
         model_class = self._mobile_pass_model()
-        return model_class.objects.create(
-            type=self.type,
-            platform=Platform.GOOGLE,
-            builder_name=self.name(),
-            content={
+        create_kwargs = {
+            "type": self.type,
+            "platform": Platform.GOOGLE,
+            "builder_name": self.name(),
+            "content": {
                 "googleClassType": self.class_resource,
                 "googleObjectId": self.object_id(),
                 "googleClassId": self.class_id(),
                 "googleObjectPayload": payload,
             },
-            images={},
-        )
+            "images": {},
+        }
+        if content_object is not None:
+            create_kwargs["content_object"] = content_object
+        return model_class.objects.create(**create_kwargs)
 
     def compile_google_object_payload(self) -> dict:
         return filter_empty(

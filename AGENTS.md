@@ -148,7 +148,7 @@ MobilePass.objects.google()
 | GET | `/passkit/v1/apple/{mobile_pass_id}/download?signature=…` | HMAC signature | Signed `.pkpass` download |
 | POST | `/passkit/v1/google/callbacks` | ECv2 | Google save/remove callbacks |
 
-`pass_serial` in PassKit routes is the `MobilePass` UUID primary key.
+`pass_serial` in PassKit routes is the `serialNumber` from `pass.json` (routes fall back to the `MobilePass` UUID primary key). Passes issued without an explicit serial use the model primary key as their serial, so both values match by default.
 
 ## Updating passes after issue
 
@@ -187,7 +187,7 @@ When `queue.backend` is omitted, updates run synchronously on `post_save`.
 ```python
 from django_mobile_pass.mixins import HasMobilePasses
 
-class Order(models.Model, HasMobilePasses):
+class Order(HasMobilePasses):  # abstract model mixin; list it first with other bases
     ...
 ```
 
@@ -264,7 +264,7 @@ Use `tests/` for PassKit routes, signing, ECv2 verification, and builder behavio
 2. **Apple `webservice_host`** must be `https://` for production PassKit.
 3. **Google `origins`** must include your site origin for Save-to-Wallet JWTs (defaults from `public_url` when not set).
 4. **Certificate / service account secrets** belong in environment or secret stores, never committed.
-5. **Pass serial in PassKit** is the Django `MobilePass.pk`, not necessarily `pass.json` `serialNumber`.
+5. **Pass serial in PassKit** is the `pass.json` `serialNumber` (defaults to the Django `MobilePass.pk` when you do not set one). Routes also accept the pk as a fallback.
 6. **HasMobilePasses filtering** — use `instance.apple_passes()` / `instance.google_passes()`; the generic relation manager does not expose queryset helpers like `.apple()` directly.
 7. **Apple change messages** — use the `:value` placeholder; it is converted to Apple's `%@` token automatically.
 

@@ -162,7 +162,7 @@ class MobilePass(models.Model):
             return True
         return self.updated_at > since
 
-    def to_response(self):
+    def to_response(self, request=None):
         if self.is_apple:
             return self.download_response()
         return redirect(self.google_add_to_wallet_url())

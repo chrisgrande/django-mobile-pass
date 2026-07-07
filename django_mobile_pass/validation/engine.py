@@ -29,7 +29,6 @@ def validate_payload(data: dict, rules: dict[str, list[str | tuple]]) -> dict:
 
     for field, constraints in rules.items():
         value = _get_nested(data, field)
-        nullable = "nullable" in constraints
 
         if _is_empty(value):
             if "required" in constraints:

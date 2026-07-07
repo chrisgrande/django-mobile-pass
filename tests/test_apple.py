@@ -9,6 +9,28 @@ from django_mobile_pass.models import MobilePass
 
 
 class AppleBuilderTests(TestCase):
+    def test_default_serial_number_matches_stored_pass_primary_key(self):
+        mobile_pass = (
+            EventTicketPassBuilder.make()
+            .set_description("Event")
+            .add_field("event", "Launch")
+            .save()
+        )
+
+        self.assertEqual(mobile_pass.content["serialNumber"], str(mobile_pass.pk))
+
+    def test_explicit_serial_number_is_preserved(self):
+        mobile_pass = (
+            EventTicketPassBuilder.make()
+            .set_description("Event")
+            .set_serial_number("TICKET-0042")
+            .add_field("event", "Launch")
+            .save()
+        )
+
+        self.assertEqual(mobile_pass.content["serialNumber"], "TICKET-0042")
+        self.assertNotEqual(str(mobile_pass.pk), "TICKET-0042")
+
     def test_event_ticket_serializes_back_fields_but_generic_does_not(self):
         event_payload = (
             EventTicketPassBuilder.make()
@@ -165,6 +187,78 @@ class ApplePasskitRouteTests(TestCase):
                 **self.auth,
             )
         self.assertEqual(response.status_code, 304)
+
+    def test_check_for_updates_returns_304_when_echoing_last_modified(self):
+        url = f"/passkit/v1/passes/pass.example.test/{self.mobile_pass.pk}"
+        with patch("django_mobile_pass.apple.builders.build_pkpass", return_value=b"PKPASS"):
+            first = self.client.get(url, **self.auth)
+            second = self.client.get(
+                url,
+                HTTP_IF_MODIFIED_SINCE=first["Last-Modified"],
+                **self.auth,
+            )
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 304)
+
+    def test_check_for_updates_ignores_malformed_if_modified_since(self):
+        url = f"/passkit/v1/passes/pass.example.test/{self.mobile_pass.pk}"
+        with patch("django_mobile_pass.apple.builders.build_pkpass", return_value=b"PKPASS"):
+            response = self.client.get(url, HTTP_IF_MODIFIED_SINCE="not-a-date", **self.auth)
+        self.assertEqual(response.status_code, 200)
+
+    def test_passkit_routes_resolve_custom_pass_serial_numbers(self):
+        custom_pass = (
+            EventTicketPassBuilder.make()
+            .set_description("Event")
+            .set_serial_number("TICKET-0042")
+            .add_field("event", "Launch")
+            .save()
+        )
+
+        register_response = self.client.post(
+            "/passkit/v1/devices/device-9/registrations/pass.example.test/TICKET-0042",
+            data={"pushToken": "push-token-9"},
+            content_type="application/json",
+            **self.auth,
+        )
+        self.assertEqual(register_response.status_code, 201)
+        registration = AppleMobilePassRegistration.objects.get(device_id="device-9")
+        self.assertEqual(registration.mobile_pass, custom_pass)
+
+        list_response = self.client.get(
+            "/passkit/v1/devices/device-9/registrations/pass.example.test",
+            **self.auth,
+        )
+        self.assertEqual(list_response.json()["serialNumbers"], ["TICKET-0042"])
+
+        with patch("django_mobile_pass.apple.builders.build_pkpass", return_value=b"PKPASS"):
+            update_response = self.client.get(
+                "/passkit/v1/passes/pass.example.test/TICKET-0042",
+                **self.auth,
+            )
+        self.assertEqual(update_response.status_code, 200)
+
+        unregister_response = self.client.delete(
+            "/passkit/v1/devices/device-9/registrations/pass.example.test/TICKET-0042",
+            **self.auth,
+        )
+        self.assertEqual(unregister_response.status_code, 204)
+        self.assertEqual(AppleMobilePassRegistration.objects.filter(device_id="device-9").count(), 0)
+
+    def test_passkit_routes_return_404_for_unknown_serials(self):
+        response = self.client.post(
+            "/passkit/v1/devices/device-1/registrations/pass.example.test/unknown-serial",
+            data={"pushToken": "push-token-1"},
+            content_type="application/json",
+            **self.auth,
+        )
+        self.assertEqual(response.status_code, 404)
+
+        update_response = self.client.get(
+            "/passkit/v1/passes/pass.example.test/unknown-serial",
+            **self.auth,
+        )
+        self.assertEqual(update_response.status_code, 404)
 
     def test_associated_serials_filters_by_passes_updated_since(self):
         self.client.post(
