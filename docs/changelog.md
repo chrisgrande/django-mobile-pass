@@ -5,8 +5,9 @@ weight: 91
 
 # Changelog
 
-## Unreleased
+## 0.1.1
 
+- Added migration `0002` for `MobilePass` field choices and renamed Apple/Google indexes so model state matches migrations.
 - **Fixed**: PassKit web service routes now resolve `pass_serial` using the `serialNumber` inside `pass.json` (with a primary-key fallback), and Apple passes issued without an explicit serial use the `MobilePass` UUID for both, so device registration and update checks work end to end.
 - **Fixed**: `HasMobilePasses` is now an abstract model so its `mobile_passes` generic relation is actually contributed to concrete models. Inherit it directly (`class Order(HasMobilePasses)`) or list it before other bases.
 - **Fixed**: APNs update notifications are sent over HTTP/2 via `httpx` (Apple's push API rejects HTTP/1.1 connections). `httpx[http2]` is now a dependency.
