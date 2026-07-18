@@ -5,6 +5,10 @@ weight: 91
 
 # Changelog
 
+## Unreleased
+
+- **Fixed**: pass update notifications triggered by saving a `MobilePass` are now deferred with `transaction.on_commit`. Previously the APNs push (or queue task) was dispatched from `post_save` before the surrounding transaction committed, so devices could fetch the pass before the new content was visible (receiving `304 Not Modified` or stale data) or be notified about a change that later rolled back. Outside a transaction the dispatch still runs immediately.
+
 ## 0.1.1
 
 - Added migration `0002` for `MobilePass` field choices and renamed Apple/Google indexes so model state matches migrations.

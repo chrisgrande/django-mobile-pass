@@ -154,7 +154,7 @@ MobilePass.objects.google()
 
 - **Apple** — hydrate builder from stored pass, change fields, `save()`; or `mobile_pass.update_field(key, value, change_message="Gate changed to :value")`.
 - **Google** — update `content["googleObjectPayload"]` on the `MobilePass` and `save()`; the package PATCHes the Google object.
-- **Notifications** — when `push_updates_on_save` is `True`, saving an existing pass dispatches Apple APNs and/or Google PATCH.
+- **Notifications** — when `push_updates_on_save` is `True`, saving an existing pass dispatches Apple APNs and/or Google PATCH (deferred via `transaction.on_commit`, so nothing is sent until the surrounding transaction commits).
 
 ### Queue-backed updates (optional)
 
