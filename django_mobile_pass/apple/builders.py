@@ -340,14 +340,17 @@ class ApplePassBuilder:
     def _compile_data(self) -> dict:
         config = get_mobile_pass_settings().apple
         barcode = self.barcode.to_dict() if self.barcode else None
+        webservice_url = self._webservice_url()
         compiled = filter_empty(
             {
                 "formatVersion": 1,
                 "organizationName": self.organization_name,
                 "passTypeIdentifier": config.type_identifier,
                 "serialNumber": self.serial_number,
-                "authenticationToken": config.webservice_secret,
-                "webServiceURL": self._webservice_url(),
+                # authenticationToken is only meaningful with webServiceURL; including
+                # one without the other can make PassKit reject the pass on macOS.
+                "authenticationToken": config.webservice_secret if webservice_url else None,
+                "webServiceURL": webservice_url,
                 "teamIdentifier": config.team_identifier,
                 "description": self.description,
                 "semantics": self._compile_semantics(),

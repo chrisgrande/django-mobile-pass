@@ -5,6 +5,15 @@ weight: 91
 
 # Changelog
 
+## 0.1.2
+
+- **Fixed**: Apple `pass.json` dates are emitted as W3C timestamps with a timezone (naive values default to UTC). Missing timezones were a common cause of Safari on Mac rejecting passes with `PKPassKitErrorDomain error 1`.
+- **Fixed**: Fields with `dateStyle`/`timeStyle` now always include both styles and normalize their values to W3C datetimes.
+- **Fixed**: `dataDetectorTypes` is serialized as an array, matching Apple's PassKit schema.
+- **Fixed**: `authenticationToken` is omitted unless `webServiceURL` is present.
+- **Fixed**: `.pkpass` archives store files uncompressed (`ZIP_STORED`), as Apple documents for pass packages.
+- **Fixed**: `MobilePass.expire()` writes `expirationDate` in the same W3C format.
+
 ## 0.1.1
 
 - Added migration `0002` for `MobilePass` field choices and renamed Apple/Google indexes so model state matches migrations.
