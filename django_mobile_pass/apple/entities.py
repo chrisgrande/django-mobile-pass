@@ -12,7 +12,7 @@ from django_mobile_pass.enums import (
     TimeStyleType,
 )
 from django_mobile_pass.exceptions import ImageNotFound
-from django_mobile_pass.utils import filter_empty
+from django_mobile_pass.utils import ensure_w3c_datetime, filter_empty
 
 
 @dataclass(slots=True)
@@ -175,6 +175,14 @@ class FieldContent:
 
     @classmethod
     def from_dict(cls, values: dict) -> "FieldContent":
+        raw_detectors = values.get("dataDetectorTypes")
+        if isinstance(raw_detectors, list):
+            data_detector_type = DataDetectorType(raw_detectors[0]) if raw_detectors else None
+        elif raw_detectors:
+            data_detector_type = DataDetectorType(raw_detectors)
+        else:
+            data_detector_type = None
+
         return cls(
             key=str(values["key"]),
             value=values.get("value"),
@@ -185,30 +193,42 @@ class FieldContent:
             currency_code=values.get("currencyCode"),
             date_style=DateType(values["dateStyle"]) if values.get("dateStyle") else None,
             time_style=TimeStyleType(values["timeStyle"]) if values.get("timeStyle") else None,
-            data_detector_type=DataDetectorType(values["dataDetectorTypes"])
-            if values.get("dataDetectorTypes")
-            else None,
+            data_detector_type=data_detector_type,
             ignores_timezone=values.get("ignoresTimezone"),
             is_relative=values.get("isRelative"),
             text_alignment=TextAlignmentType(values["textAlignment"]) if values.get("textAlignment") else None,
         )
 
     def to_dict(self) -> dict:
+        date_style = self.date_style
+        time_style = self.time_style
+        value = self.value
+
+        # PassKit requires both styles when formatting a date, and the value
+        # must be a W3C datetime with a timezone designator.
+        if date_style is not None or time_style is not None:
+            if date_style is None:
+                date_style = DateType.NONE
+            if time_style is None:
+                time_style = TimeStyleType.NONE
+            if value is not None:
+                value = ensure_w3c_datetime(value)
+
         return filter_empty(
             {
                 "key": self.key,
                 "label": self.label,
-                "value": self.value,
+                "value": value,
                 "attributedValue": self.attributed_value,
                 "changeMessage": self.change_message,
                 "currencyCode": self.currency_code,
-                "dataDetectorTypes": self.data_detector_type.value if self.data_detector_type else None,
-                "dateStyle": self.date_style.value if self.date_style else None,
+                "dataDetectorTypes": [self.data_detector_type.value] if self.data_detector_type else None,
+                "dateStyle": date_style.value if date_style else None,
                 "ignoresTimezone": self.ignores_timezone,
                 "isRelative": self.is_relative,
                 "numberStyle": self.number_style.value if self.number_style else None,
                 "textAlignment": self.text_alignment.value if self.text_alignment else None,
-                "timeStyle": self.time_style.value if self.time_style else None,
+                "timeStyle": time_style.value if time_style else None,
             }
         )
 
@@ -250,7 +270,7 @@ class Price:
         return cls(amount=values.get("amount"), currency_code=values.get("currencyCode"))
 
     def to_dict(self) -> dict:
-        return {"amount": self.amount, "currencyCode": self.currency_code}
+        return filter_empty({"amount": self.amount, "currencyCode": self.currency_code})
 
 
 @dataclass(slots=True)

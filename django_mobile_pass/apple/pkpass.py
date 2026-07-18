@@ -4,7 +4,7 @@ import hashlib
 import json
 from io import BytesIO
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZipFile
+from zipfile import ZIP_STORED, ZipFile
 
 from django_mobile_pass.apple.entities import AppleImage
 from django_mobile_pass.exceptions import InvalidCertificate
@@ -41,7 +41,9 @@ def build_pkpass(pass_json: dict, images: dict[str, AppleImage], settings: Apple
     signature = sign_manifest(manifest_bytes, settings)
 
     buffer = BytesIO()
-    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+    # Apple documents the pass package as a ZIP of uncompressed files. Using
+    # DEFLATE has caused PassKit rejection on some macOS Safari builds.
+    with ZipFile(buffer, "w", ZIP_STORED) as archive:
         for name, content in files.items():
             archive.writestr(name, content)
         archive.writestr("manifest.json", manifest_bytes)
