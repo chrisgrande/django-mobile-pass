@@ -5,6 +5,10 @@ weight: 91
 
 # Changelog
 
+## Unreleased
+
+- **Fixed**: pass update notifications triggered by saving a `MobilePass` are now deferred with `transaction.on_commit`. Previously the APNs push (or queue task) was dispatched from `post_save` before the surrounding transaction committed, so devices could fetch the pass before the new content was visible (receiving `304 Not Modified` or stale data) or be notified about a change that later rolled back. Outside a transaction the dispatch still runs immediately.
+
 ## 0.1.2
 
 - **Fixed**: Apple `pass.json` dates are emitted as W3C timestamps with a timezone (naive values default to UTC). Missing timezones were a common cause of Safari on Mac rejecting passes with `PKPassKitErrorDomain error 1`.

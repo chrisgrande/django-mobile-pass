@@ -43,7 +43,7 @@ Saving an existing `MobilePass` triggers `NotifyGoogleOfPassUpdateAction` when `
 
 ## Update delivery model
 
-By default, wallet update notifications run **synchronously** on save. For async delivery, configure `MOBILE_PASS.queue` (see [Configuration](../configuration.md#queue-backed-updates)). Disable notifications with:
+By default, wallet update notifications run **synchronously** on save. When the save happens inside a database transaction, the notification is deferred with `transaction.on_commit` and only dispatched once the transaction commits — devices are never told about changes that are not yet visible (or that roll back). For async delivery, configure `MOBILE_PASS.queue` (see [Configuration](../configuration.md#queue-backed-updates)). Disable notifications with:
 
 ```python
 MOBILE_PASS = {
