@@ -38,7 +38,7 @@ PassKit authorization rules in Django:
 |----------|---------------------------------------------|
 | Register / unregister device | Yes |
 | Check for updates (`GET /passes/...`) | Yes |
-| List associated serials | Yes |
+| List associated serials | No — device library identifier is the credential (Apple omits the header) |
 | Download signed Apple pass | No — uses `?signature=` query param |
 | Wallet logs (`POST /log`) | No |
 

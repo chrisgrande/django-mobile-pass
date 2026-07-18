@@ -7,6 +7,9 @@ weight: 91
 
 ## Unreleased
 
+## 0.1.3
+
+- **Fixed**: the PassKit "list registrations" endpoint (`GET /passkit/v1/devices/<deviceLibraryIdentifier>/registrations/<passTypeIdentifier>`) no longer requires an `Authorization` header. Apple Wallet does not send one on this endpoint (the device library identifier is the credential per Apple's PassKit Web Service spec), so requiring `ApplePass <secret>` caused every device update poll to fail with 403 and devices never learned which passes to refresh. Register/unregister and pass-download endpoints still require the `ApplePass` token.
 - **Fixed**: pass update notifications triggered by saving a `MobilePass` are now deferred with `transaction.on_commit`. Previously the APNs push (or queue task) was dispatched from `post_save` before the surrounding transaction committed, so devices could fetch the pass before the new content was visible (receiving `304 Not Modified` or stale data) or be notified about a change that later rolled back. Outside a transaction the dispatch still runs immediately.
 
 ## 0.1.2

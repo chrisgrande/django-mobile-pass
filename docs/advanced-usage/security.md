@@ -11,7 +11,7 @@ Keep wallet credentials out of source control. Use environment-backed Django set
 
 The package requires `Authorization: ApplePass <webservice_secret>` on PassKit endpoints that expose registration state or pass contents. Configure a non-empty `MOBILE_PASS["apple"]["webservice_secret"]`; requests are rejected when it is missing.
 
-Protected routes: device register/unregister, check for updates, and associated serial listing. The log endpoint and signed Apple download URL do not use the `ApplePass` header.
+Protected routes: device register/unregister and check for updates (get latest pass). The list-registrations endpoint (`GET /passkit/v1/devices/<deviceLibraryIdentifier>/registrations/<passTypeIdentifier>`) is unauthenticated per Apple's PassKit Web Service spec — Wallet does not send an `Authorization` header because the request can span multiple passes with different tokens; the opaque device library identifier acts as the credential, and the response contains only serial numbers (no pass content). The log endpoint and signed Apple download URL also do not use the `ApplePass` header.
 
 Apple pass update routes also verify that the requested serial belongs to an Apple pass and that the URL pass type matches the stored `passTypeIdentifier`.
 
