@@ -75,7 +75,9 @@ class ApplePasskitRouteTests(TestCase):
         self.assertEqual(register_response.status_code, 201)
         self.assertEqual(AppleMobilePassRegistration.objects.count(), 1)
 
-        list_response = self.client.get("/passkit/v1/devices/device-1/registrations/pass.example.test", **self.auth)
+        # Wallet omits Authorization on the list endpoint; the device library
+        # identifier is the credential per Apple's PassKit Web Service spec.
+        list_response = self.client.get("/passkit/v1/devices/device-1/registrations/pass.example.test")
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(list_response.json()["serialNumbers"], [str(self.mobile_pass.pk)])
 
@@ -102,10 +104,12 @@ class ApplePasskitRouteTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
 
-    def test_associated_serials_requires_applepass_authorization(self):
+    def test_associated_serials_does_not_require_authorization(self):
+        """Apple sends no Authorization header on this endpoint (the device
+        library identifier is the credential), so it must not 403."""
         response = self.client.get("/passkit/v1/devices/device-1/registrations/pass.example.test")
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 204)
 
     def test_pass_type_mismatch_is_not_downloadable_via_update_endpoint(self):
         response = self.client.get(
@@ -269,7 +273,6 @@ class ApplePasskitRouteTests(TestCase):
         )
         response = self.client.get(
             "/passkit/v1/devices/device-1/registrations/pass.example.test?passesUpdatedSince=2099-01-01T00:00:00Z",
-            **self.auth,
         )
         self.assertEqual(response.status_code, 204)
 

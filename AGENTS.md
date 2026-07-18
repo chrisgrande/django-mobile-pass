@@ -143,7 +143,7 @@ MobilePass.objects.google()
 |--------|------|------|---------|
 | POST/DELETE | `/passkit/v1/devices/{device_id}/registrations/{pass_type_id}/{pass_serial}` | `ApplePass` | Apple register/unregister |
 | GET | `/passkit/v1/passes/{pass_type_id}/{pass_serial}` | `ApplePass` | Apple update check + download |
-| GET | `/passkit/v1/devices/{device_id}/registrations/{pass_type_id}` | `ApplePass` | Apple associated serials |
+| GET | `/passkit/v1/devices/{device_id}/registrations/{pass_type_id}` | None (device id is the credential) | Apple associated serials |
 | POST | `/passkit/v1/log` | None | Apple Wallet client logs |
 | GET | `/passkit/v1/apple/{mobile_pass_id}/download?signature=…` | HMAC signature | Signed `.pkpass` download |
 | POST | `/passkit/v1/google/callbacks` | ECv2 | Google save/remove callbacks |

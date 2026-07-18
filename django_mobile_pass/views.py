@@ -224,10 +224,6 @@ def check_for_updates(request, pass_type_id: str, pass_serial):
 
 @require_http_methods(["GET"])
 def associated_serials(request, device_id: str, pass_type_id: str):
-    forbidden = _require_apple_auth(request)
-    if forbidden:
-        return forbidden
-
     if not _valid_path_value(device_id) or not _valid_path_value(pass_type_id):
         return HttpResponseBadRequest("Invalid PassKit registration path.")
 

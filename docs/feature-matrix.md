@@ -62,7 +62,7 @@ This page maps capabilities across both wallet platforms.
 
 ### Notable behaviors
 
-- Associated serials listing requires `ApplePass` authorization.
+- Associated serials listing is unauthenticated per Apple's spec (device library identifier is the credential); response contains only serial numbers.
 - Apple download URLs use HMAC `?signature=` query parameters.
 - `google.origins` defaults to `[public_url]` when `origins` is omitted.
 
