@@ -22,22 +22,30 @@ Each helper accepts optional `label`, `change_message`, `date_style`, `time_styl
 ## Example
 
 ```python
+from datetime import datetime, timezone
+
 from django_mobile_pass.apple.builders import EventTicketPassBuilder
 from django_mobile_pass.enums import DateType, TimeStyleType
-from datetime import datetime
+from django_mobile_pass.utils import isoformat
 
 mobile_pass = (
     EventTicketPassBuilder.make()
     .set_description("River Festival")
     .add_field("event", "Main Stage")
-    .add_header_field("date", datetime(2026, 8, 1, 19, 0).isoformat(),
-                       date_style=DateType.MEDIUM, time_style=TimeStyleType.SHORT)
+    .add_header_field(
+        "date",
+        isoformat(datetime(2026, 8, 1, 19, 0, tzinfo=timezone.utc)),
+        date_style=DateType.MEDIUM,
+        time_style=TimeStyleType.SHORT,
+    )
     .add_secondary_field("venue", "Main Hall")
     .add_auxiliary_field("seat", "A-12")
     .add_back_field("terms", "No refunds after doors open.")
     .save()
 )
 ```
+
+Date field values must be W3C datetimes with a timezone (for example `2026-08-01T19:00:00Z`). Naive ISO strings are normalized to UTC automatically when `date_style` / `time_style` are set.
 
 Back fields are only serialized for pass types with `include_back_fields = True` (event ticket, boarding pass, coupon).
 

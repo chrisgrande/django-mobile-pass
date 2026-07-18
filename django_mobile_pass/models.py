@@ -58,9 +58,11 @@ class MobilePass(models.Model):
 
     def expire(self) -> "MobilePass":
         if self.is_apple:
+            from django_mobile_pass.utils import isoformat
+
             content = dict(self.content)
             content["voided"] = True
-            content["expirationDate"] = timezone.now().isoformat()
+            content["expirationDate"] = isoformat(timezone.now())
         else:
             content = dict(self.content)
             object_payload = dict(content.get("googleObjectPayload", {}))

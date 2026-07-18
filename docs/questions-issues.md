@@ -19,6 +19,7 @@ weight: 90
 - **PassKit registration fails:** ensure the URL UUID matches `MobilePass.pk`, not only the human-readable `serialNumber` in `pass.json`.
 - **Updates never arrive:** check `webservice_host`, `webservice_secret`, and that `push_updates_on_save` is not disabled.
 - **Certificate errors:** verify the `.p12` password and that the Pass Type ID matches the certificate.
+- **Safari on Mac shows `PKPassKitErrorDomain error 1`:** inspect `pass.json` for invalid dates. `relevantDate`, `expirationDate`, and any field with `dateStyle`/`timeStyle` must use a W3C datetime with a timezone (e.g. `2026-08-01T19:00:00Z`). Also confirm `icon.png` is bundled and the PKCS#12 chain includes Apple's WWDR intermediate.
 
 ## Common Google issues
 

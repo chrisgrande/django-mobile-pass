@@ -267,6 +267,7 @@ Use `tests/` for PassKit routes, signing, ECv2 verification, and builder behavio
 5. **Pass serial in PassKit** is the `pass.json` `serialNumber` (defaults to the Django `MobilePass.pk` when you do not set one). Routes also accept the pk as a fallback.
 6. **HasMobilePasses filtering** — use `instance.apple_passes()` / `instance.google_passes()`; the generic relation manager does not expose queryset helpers like `.apple()` directly.
 7. **Apple change messages** — use the `:value` placeholder; it is converted to Apple's `%@` token automatically.
+8. **Apple dates** — `relevantDate`, `expirationDate`, and fields with `dateStyle`/`timeStyle` must be W3C datetimes with a timezone (e.g. `2026-08-01T19:00:00Z`). Naive values are normalized to UTC; missing timezones cause Safari on Mac to reject the pass (`PKPassKitErrorDomain error 1`).
 
 ## Agent workflow summary
 
