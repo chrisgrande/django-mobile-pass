@@ -20,6 +20,7 @@ def default_builders() -> dict[str, dict[str, str]]:
             "coupon": "django_mobile_pass.apple.builders.CouponPassBuilder",
             "event_ticket": "django_mobile_pass.apple.builders.EventTicketPassBuilder",
             "generic": "django_mobile_pass.apple.builders.GenericPassBuilder",
+            "poster_generic": "django_mobile_pass.apple.builders.PosterGenericPassBuilder",
             "store_card": "django_mobile_pass.apple.builders.StoreCardPassBuilder",
         },
         "google": {

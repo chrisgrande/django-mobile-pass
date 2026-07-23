@@ -172,7 +172,7 @@ class Ticket(HasMobilePasses, models.Model):
 
 | Platform | Builders |
 |----------|----------|
-| Apple | `EventTicketPassBuilder`, `CouponPassBuilder`, `StoreCardPassBuilder`, `GenericPassBuilder`, `BoardingPassBuilder`, `AirlinePassBuilder` |
+| Apple | `EventTicketPassBuilder`, `CouponPassBuilder`, `StoreCardPassBuilder`, `GenericPassBuilder`, `PosterGenericPassBuilder`, `BoardingPassBuilder`, `AirlinePassBuilder` |
 | Google | `EventTicketPassClass` / `EventTicketPassBuilder`, `BoardingPassClass` / `BoardingPassBuilder`, `GenericPassClass` / `GenericPassBuilder`, `LoyaltyPassClass` / `LoyaltyPassBuilder`, `OfferPassClass` / `OfferPassBuilder` |
 
 ## Runtime URLs
@@ -226,7 +226,7 @@ docs/                 # Documentation
 
 ## What is included
 
-- Apple Wallet builders for event tickets, coupons, store cards, generic cards, and airline boarding passes
+- Apple Wallet builders for event tickets, coupons, store cards, generic cards, poster generic cards, and airline boarding passes
 - `.pkpass` generation and PKCS#7 signing from a PKCS#12 certificate
 - Local and remote Apple image support
 - Google Wallet class and object builders for event tickets, flights, generic passes, loyalty cards, and offers

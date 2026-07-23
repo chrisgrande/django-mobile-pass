@@ -16,6 +16,7 @@ Choose the wallet type that matches the data model users expect. Each type maps 
 | `CouponPassBuilder` | Discounts and promotional offers |
 | `StoreCardPassBuilder` | Loyalty, gift, and membership cards |
 | `GenericPassBuilder` | Simple cards without specialized layout |
+| `PosterGenericPassBuilder` | iOS 27+ artwork-first membership / loyalty cards |
 
 ## Google pass types
 
@@ -33,6 +34,7 @@ Choose the wallet type that matches the data model users expect. Each type maps 
 - **Coupons/offers** emphasize redemption codes and expiry.
 - **Store cards/loyalty** emphasize balances, tiers, and account identifiers.
 - **Generic** works when you only need a few labeled fields and a barcode.
+- **Poster generic** (Apple, iOS 27+) uses a full-bleed background image with a classic `generic` fallback for older devices.
 
 All builders follow the same pattern: configure fields, optionally add images and barcodes, then call `save()` to persist a `MobilePass` record.
 

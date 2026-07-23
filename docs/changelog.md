@@ -7,6 +7,12 @@ weight: 91
 
 ## Unreleased
 
+- **Added**: Apple iOS 27 Poster Generic passes via `PosterGenericPassBuilder` (emits `posterGeneric` plus a classic `generic` fallback for older iOS).
+- **Added**: Apple featured actions (`add_featured_action` / `FeaturedActionType`, max two per pass).
+- **Added**: Apple barcode formats Code 39, Codabar, EAN-13, and ITF, plus `add_barcode()` for multi-format fallbacks.
+- **Added**: Footer fields (`add_footer_field`) and primary logo / background image helpers for poster layouts.
+- **Changed**: Apple `GenericPassBuilder` now serializes `backFields`.
+
 ## 0.1.3
 
 - **Fixed**: the PassKit "list registrations" endpoint (`GET /passkit/v1/devices/<deviceLibraryIdentifier>/registrations/<passTypeIdentifier>`) no longer requires an `Authorization` header. Apple Wallet does not send one on this endpoint (the device library identifier is the credential per Apple's PassKit Web Service spec), so requiring `ApplePass <secret>` caused every device update poll to fail with 403 and devices never learned which passes to refresh. Register/unregister and pass-download endpoints still require the `ApplePass` token.

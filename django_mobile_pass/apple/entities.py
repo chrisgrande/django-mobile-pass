@@ -7,6 +7,7 @@ from django_mobile_pass.enums import (
     BarcodeType,
     DataDetectorType,
     DateType,
+    FeaturedActionType,
     NumberStyleType,
     TextAlignmentType,
     TimeStyleType,
@@ -231,6 +232,28 @@ class FieldContent:
                 "timeStyle": time_style.value if time_style else None,
             }
         )
+
+
+@dataclass(slots=True)
+class FeaturedAction:
+    identifier: str
+    type: FeaturedActionType
+    url: str
+
+    @classmethod
+    def from_dict(cls, values: dict) -> "FeaturedAction":
+        return cls(
+            identifier=str(values["identifier"]),
+            type=FeaturedActionType(values["type"]),
+            url=str(values["url"]),
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "identifier": self.identifier,
+            "type": self.type.value,
+            "url": self.url,
+        }
 
 
 @dataclass(slots=True)

@@ -5,6 +5,7 @@ from django_mobile_pass.apple.builders import (
     CouponPassBuilder,
     EventTicketPassBuilder,
     GenericPassBuilder,
+    PosterGenericPassBuilder,
     StoreCardPassBuilder,
 )
 from django_mobile_pass.apple.reader import PkPassReader
@@ -17,5 +18,6 @@ __all__ = [
     "EventTicketPassBuilder",
     "GenericPassBuilder",
     "PkPassReader",
+    "PosterGenericPassBuilder",
     "StoreCardPassBuilder",
 ]

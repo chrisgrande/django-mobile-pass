@@ -47,7 +47,7 @@ mobile_pass = (
 
 Date field values must be W3C datetimes with a timezone (for example `2026-08-01T19:00:00Z`). Naive ISO strings are normalized to UTC automatically when `date_style` / `time_style` are set.
 
-Back fields are only serialized for pass types with `include_back_fields = True` (event ticket, boarding pass, coupon).
+Back fields are only serialized for pass types with `include_back_fields = True` (event ticket, boarding pass, generic, poster generic).
 
 ## Updating fields on saved passes
 

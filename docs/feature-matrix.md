@@ -14,6 +14,9 @@ This page maps capabilities across both wallet platforms.
 | Pass file / save link | `.pkpass` download | Save-to-Wallet JWT URL |
 | Template + instance model | Single signed JSON pass | Class + object REST resources |
 | Barcodes (QR, PDF417, Aztec, Code128) | Yes | Yes |
+| Barcodes (Code39, Codabar, EAN13, ITF) | Yes (iOS 27+) | No |
+| Multi-barcode fallback array | Yes (`add_barcode`) | No |
+| Featured actions | Yes (`add_featured_action`, iOS 27+) | No |
 | WiFi QR barcode helper | Yes (`set_wifi_barcode`) | Yes (`set_wifi_barcode`) |
 | Local image files | Yes | No — public HTTPS URLs only |
 | Remote HTTPS images | Yes | Yes |
@@ -36,6 +39,7 @@ This page maps capabilities across both wallet platforms.
 | Coupon / offer | `coupon` | `offer` |
 | Store / loyalty card | `store_card` | `loyalty` |
 | Generic card | `generic` | `generic` |
+| Poster generic card (iOS 27+) | `poster_generic` | — |
 
 ## HTTP / infrastructure
 
@@ -50,7 +54,7 @@ This page maps capabilities across both wallet platforms.
 
 | Area | Status |
 |------|--------|
-| Apple builders (6 types) | Supported |
+| Apple builders (7 types) | Supported |
 | Google class/object builders (5 types) | Supported |
 | Per-type payload validators | Supported (`django_mobile_pass.validation`) |
 | PassKit routes | Supported |

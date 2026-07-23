@@ -5,7 +5,7 @@ weight: 16
 
 # Adding barcodes
 
-Both Apple and Google builders support barcodes through `set_barcode()` and WiFi-specific `set_wifi_barcode()`.
+Both Apple and Google builders support barcodes through `set_barcode()` and WiFi-specific `set_wifi_barcode()`. Apple builders also support `add_barcode()` for iOS 27 multi-format fallbacks.
 
 ## Standard barcodes
 
@@ -23,8 +23,23 @@ Supported formats:
 | `PDF417` | Yes | Yes |
 | `AZTEC` | Yes | Yes |
 | `CODE128` | Yes | Yes |
+| `CODE39` | Yes (iOS 27+) | No |
+| `CODABAR` | Yes (iOS 27+) | No |
+| `EAN13` | Yes (iOS 27+) | No |
+| `ITF` | Yes (iOS 27+) | No |
 
 `alt_text` is shown to accessibility tools and when the barcode cannot be rendered.
+
+## Apple multi-barcode fallbacks (iOS 27+)
+
+Wallet picks the first format it can render. Lead with your preferred format and append a widely supported fallback (such as QR) for older iOS:
+
+```python
+builder.set_barcode(BarcodeType.CODABAR, "123456789")
+builder.add_barcode(BarcodeType.QR, "123456789")
+```
+
+`set_barcode()` replaces the list. `add_barcode()` appends. The legacy top-level `barcode` key is set to the first entry.
 
 ## WiFi barcodes
 
@@ -63,4 +78,4 @@ mobile_pass = (
 )
 ```
 
-Only one barcode is stored per builder instance. Set it before calling `save()`.
+Google builders store one barcode. Apple builders can store multiple via `add_barcode()` as shown above.

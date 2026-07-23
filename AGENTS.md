@@ -108,7 +108,7 @@ return mobile_pass.to_response(request)  # or mobile_pass.add_to_wallet_url()
 
 | Platform | Registry keys |
 |----------|---------------|
-| Apple | `airline`, `boarding`, `coupon`, `event_ticket`, `generic`, `store_card` |
+| Apple | `airline`, `boarding`, `coupon`, `event_ticket`, `generic`, `poster_generic`, `store_card` |
 | Google | `boarding`, `event_ticket`, `generic`, `loyalty`, `offer` |
 
 Resolve custom builders via `MOBILE_PASS["builders"]`. Overrides must subclass `ApplePassBuilder` or `GooglePassBuilder`.
