@@ -5,6 +5,7 @@ from django_mobile_pass.validation.apple import (
     CouponApplePassValidator,
     EventTicketApplePassValidator,
     GenericApplePassValidator,
+    PosterGenericApplePassValidator,
     StoreCardApplePassValidator,
 )
 from django_mobile_pass.validation.google import (
@@ -29,6 +30,7 @@ __all__ = [
     "CouponApplePassValidator",
     "EventTicketApplePassValidator",
     "GenericApplePassValidator",
+    "PosterGenericApplePassValidator",
     "StoreCardApplePassValidator",
     "GooglePassClassValidator",
     "GooglePassObjectValidator",

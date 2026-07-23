@@ -27,6 +27,7 @@ class ApplePassValidator:
             "logoText": ["nullable", "string"],
             "barcode": [],
             "barcodes": [],
+            "featuredActions": [],
             "relevantDate": [],
             "locations": [],
             "maxDistance": [],
@@ -84,6 +85,7 @@ class ApplePassValidator:
                 "secondaryFields",
                 "auxiliaryFields",
                 "backFields",
+                "footerFields",
             ):
                 for field in section.get(field_group) or []:
                     if not isinstance(field, dict):
@@ -112,6 +114,7 @@ def _pass_type_field_rules(pass_type_key: str) -> dict[str, list[str | tuple]]:
         f"{pass_type_key}.secondaryFields": ["nullable", "array"],
         f"{pass_type_key}.auxiliaryFields": ["nullable", "array"],
         f"{pass_type_key}.backFields": ["nullable", "array"],
+        f"{pass_type_key}.footerFields": ["nullable", "array"],
     }
 
 
@@ -123,6 +126,15 @@ class EventTicketApplePassValidator(ApplePassValidator):
 class GenericApplePassValidator(ApplePassValidator):
     def rules(self) -> dict[str, list[str | tuple]]:
         return {**super().rules(), **_pass_type_field_rules("generic")}
+
+
+class PosterGenericApplePassValidator(ApplePassValidator):
+    def rules(self) -> dict[str, list[str | tuple]]:
+        return {
+            **super().rules(),
+            **_pass_type_field_rules("posterGeneric"),
+            **_pass_type_field_rules("generic"),
+        }
 
 
 class CouponApplePassValidator(ApplePassValidator):

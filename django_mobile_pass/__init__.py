@@ -3,6 +3,7 @@ from django_mobile_pass.apple.builders import (
     CouponPassBuilder,
     EventTicketPassBuilder as AppleEventTicketPassBuilder,
     GenericPassBuilder as AppleGenericPassBuilder,
+    PosterGenericPassBuilder,
     StoreCardPassBuilder,
 )
 from django_mobile_pass.google.builders import (
@@ -33,5 +34,6 @@ __all__ = [
     "LoyaltyPassClass",
     "OfferPassBuilder",
     "OfferPassClass",
+    "PosterGenericPassBuilder",
     "StoreCardPassBuilder",
 ]

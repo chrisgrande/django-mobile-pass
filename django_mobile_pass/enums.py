@@ -11,6 +11,27 @@ class BarcodeType(StrEnum):
     PDF417 = "PKBarcodeFormatPDF417"
     AZTEC = "PKBarcodeFormatAztec"
     CODE128 = "PKBarcodeFormatCode128"
+    CODE39 = "PKBarcodeFormatCode39"
+    CODABAR = "PKBarcodeFormatCodabar"
+    EAN13 = "PKBarcodeFormatEAN13"
+    ITF = "PKBarcodeFormatITF"
+
+
+class FeaturedActionType(StrEnum):
+    VIEW_SCHEDULE = "viewSchedule"
+    WATCH_TRAILER = "watchTrailer"
+    LISTEN_TO_MUSIC = "listenToMusic"
+    CALL = "call"
+    PLACE = "place"
+    ADD_TO_BALANCE = "addToBalance"
+    ORDER = "order"
+    SHOP = "shop"
+    MEMBERSHIP_BENEFITS = "membershipBenefits"
+    BOOK_APPOINTMENT = "bookAppointment"
+    BOOK_CAR = "bookCar"
+    BOOK_FLIGHT = "bookFlight"
+    BOOK_STAY = "bookStay"
+    VIEW_OFFERS_REWARDS = "viewOffersRewards"
 
 
 class DataDetectorType(StrEnum):
@@ -45,6 +66,7 @@ class FieldType(StrEnum):
     SECONDARY = "secondaryFields"
     AUXILIARY = "auxiliaryFields"
     BACK = "backFields"
+    FOOTER = "footerFields"
 
 
 class NumberStyleType(StrEnum):
@@ -60,6 +82,7 @@ class PassType(StrEnum):
     EVENT_TICKET = "eventTicket"
     STORE_CARD = "storeCard"
     GENERIC = "generic"
+    POSTER_GENERIC = "posterGeneric"
 
 
 class Platform(StrEnum):

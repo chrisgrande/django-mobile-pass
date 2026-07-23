@@ -5,7 +5,7 @@ weight: 40
 
 # Available pass types
 
-Apple builders: event ticket, generic, coupon, store card, boarding pass, airline boarding pass. Google builders: event ticket, flight boarding pass, generic, loyalty, and offer.
+Apple builders: event ticket, generic, poster generic, coupon, store card, boarding pass, airline boarding pass. Google builders: event ticket, flight boarding pass, generic, loyalty, and offer.
 
 - [Introduction](introduction.md)
 - [Event ticket](event-ticket.md)

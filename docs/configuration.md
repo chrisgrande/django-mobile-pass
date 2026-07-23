@@ -105,7 +105,7 @@ Built-in registry keys:
 
 | Platform | Names |
 |----------|-------|
-| Apple | `airline`, `boarding`, `coupon`, `event_ticket`, `generic`, `store_card` |
+| Apple | `airline`, `boarding`, `coupon`, `event_ticket`, `generic`, `poster_generic`, `store_card` |
 | Google | `boarding`, `event_ticket`, `generic`, `loyalty`, `offer` |
 
 ## Queue-backed updates

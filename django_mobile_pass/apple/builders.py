@@ -12,6 +12,7 @@ from django_mobile_pass.apple.entities import (
     AppleImage,
     Barcode,
     Color,
+    FeaturedAction,
     FieldContent,
     Location,
     NfcPayload,
@@ -21,7 +22,16 @@ from django_mobile_pass.apple.entities import (
     WifiNetwork,
 )
 from django_mobile_pass.apple.pkpass import build_pkpass
-from django_mobile_pass.enums import BarcodeType, DateType, FieldType, PassType, Platform, TimeStyleType, TransitType
+from django_mobile_pass.enums import (
+    BarcodeType,
+    DateType,
+    FeaturedActionType,
+    FieldType,
+    PassType,
+    Platform,
+    TimeStyleType,
+    TransitType,
+)
 from django_mobile_pass.exceptions import InvalidConfig, InvalidPass
 from django_mobile_pass.settings import get_mobile_pass_settings
 from django_mobile_pass.utils import build_wifi_uri, filter_empty, headline, isoformat, new_suffix
@@ -31,6 +41,7 @@ from django_mobile_pass.validation.apple import (
     CouponApplePassValidator,
     EventTicketApplePassValidator,
     GenericApplePassValidator,
+    PosterGenericApplePassValidator,
     StoreCardApplePassValidator,
 )
 
@@ -53,7 +64,8 @@ class ApplePassBuilder:
         self.foreground_color: Color | None = None
         self.label_color: Color | None = None
         self.download_name: str | None = getattr(model, "download_name", None)
-        self.barcode: Barcode | None = None
+        self.barcodes: list[Barcode] = []
+        self.featured_actions: list[FeaturedAction] = []
         self.relevant_date: datetime | None = None
         self.locations: list[Location] = []
         self.max_distance: int | None = None
@@ -65,6 +77,7 @@ class ApplePassBuilder:
         self.auxiliary_fields: dict[str, FieldContent] = {}
         self.header_fields: dict[str, FieldContent] = {}
         self.back_fields: dict[str, FieldContent] = {}
+        self.footer_fields: dict[str, FieldContent] = {}
 
         self._hydrate_images(images or {})
         if payload:
@@ -111,6 +124,16 @@ class ApplePassBuilder:
         self.images["thumbnail"] = AppleImage(x1_path, x2_path, x3_path)
         return self
 
+    def set_background_image(self, x1_path: str, x2_path: str | None = None, x3_path: str | None = None) -> "ApplePassBuilder":
+        self.images["background"] = AppleImage(x1_path, x2_path, x3_path)
+        return self
+
+    def set_primary_logo_image(
+        self, x1_path: str, x2_path: str | None = None, x3_path: str | None = None
+    ) -> "ApplePassBuilder":
+        self.images["primaryLogo"] = AppleImage(x1_path, x2_path, x3_path)
+        return self
+
     def set_remote_logo_image(self, x1_url: str, x2_url: str | None = None, x3_url: str | None = None) -> "ApplePassBuilder":
         self.images["logo"] = AppleImage.make_remote(x1_url, x2_url, x3_url)
         return self
@@ -125,6 +148,18 @@ class ApplePassBuilder:
 
     def set_remote_thumbnail_image(self, x1_url: str, x2_url: str | None = None, x3_url: str | None = None) -> "ApplePassBuilder":
         self.images["thumbnail"] = AppleImage.make_remote(x1_url, x2_url, x3_url)
+        return self
+
+    def set_remote_background_image(
+        self, x1_url: str, x2_url: str | None = None, x3_url: str | None = None
+    ) -> "ApplePassBuilder":
+        self.images["background"] = AppleImage.make_remote(x1_url, x2_url, x3_url)
+        return self
+
+    def set_remote_primary_logo_image(
+        self, x1_url: str, x2_url: str | None = None, x3_url: str | None = None
+    ) -> "ApplePassBuilder":
+        self.images["primaryLogo"] = AppleImage.make_remote(x1_url, x2_url, x3_url)
         return self
 
     def add_header_field(
@@ -178,6 +213,20 @@ class ApplePassBuilder:
         show_date_as_relative: bool | None = None,
     ) -> "ApplePassBuilder":
         return self.add_field(key, value, FieldType.BACK, label, change_message, date_style, time_style, show_date_as_relative)
+
+    def add_footer_field(
+        self,
+        key: str,
+        value: str,
+        label: str | None = None,
+        change_message: str | None = None,
+        date_style: DateType | None = None,
+        time_style: TimeStyleType | None = None,
+        show_date_as_relative: bool | None = None,
+    ) -> "ApplePassBuilder":
+        return self.add_field(
+            key, value, FieldType.FOOTER, label, change_message, date_style, time_style, show_date_as_relative
+        )
 
     def add_field(
         self,
@@ -252,13 +301,31 @@ class ApplePassBuilder:
         barcode = Barcode(format=format, message=message)
         if alt_text is not None:
             barcode.with_alt_text(alt_text)
-        self.barcode = barcode
+        self.barcodes = [barcode]
+        return self
+
+    def add_barcode(self, format: BarcodeType, message: str, alt_text: str | None = None) -> "ApplePassBuilder":
+        barcode = Barcode(format=format, message=message)
+        if alt_text is not None:
+            barcode.with_alt_text(alt_text)
+        self.barcodes.append(barcode)
         return self
 
     def set_wifi_barcode(
         self, ssid: str, password: str | None = None, hidden: bool = False, alt_text: str | None = None
     ) -> "ApplePassBuilder":
         return self.set_barcode(BarcodeType.QR, build_wifi_uri(ssid, password, hidden), alt_text or ssid)
+
+    def add_featured_action(
+        self, identifier: str, action_type: FeaturedActionType | str, url: str
+    ) -> "ApplePassBuilder":
+        if len(self.featured_actions) >= 2:
+            raise InvalidPass("Apple Wallet allows at most two featuredActions.")
+        resolved_type = (
+            action_type if isinstance(action_type, FeaturedActionType) else FeaturedActionType(action_type)
+        )
+        self.featured_actions.append(FeaturedAction(identifier=identifier, type=resolved_type, url=url))
+        return self
 
     def set_relevant_date(self, value: datetime) -> "ApplePassBuilder":
         self.relevant_date = value
@@ -339,7 +406,8 @@ class ApplePassBuilder:
 
     def _compile_data(self) -> dict:
         config = get_mobile_pass_settings().apple
-        barcode = self.barcode.to_dict() if self.barcode else None
+        barcodes = [barcode.to_dict() for barcode in self.barcodes] or None
+        barcode = barcodes[0] if barcodes else None
         webservice_url = self._webservice_url()
         compiled = filter_empty(
             {
@@ -358,7 +426,8 @@ class ApplePassBuilder:
                 "foregroundColor": str(self.foreground_color) if self.foreground_color else None,
                 "labelColor": str(self.label_color) if self.label_color else None,
                 "barcode": barcode,
-                "barcodes": [barcode] if barcode else None,
+                "barcodes": barcodes,
+                "featuredActions": [action.to_dict() for action in self.featured_actions] or None,
                 "relevantDate": isoformat(self.relevant_date),
                 "locations": [location.to_dict() for location in self.locations] or None,
                 "maxDistance": self.max_distance,
@@ -372,12 +441,12 @@ class ApplePassBuilder:
 
         merged = dict(self._payload)
         merged.update(compiled)
-        pass_section = self.type.value
-        if pass_section in compiled and isinstance(compiled.get(pass_section), dict):
-            merged[pass_section] = {
-                **(merged.get(pass_section) or {}),
-                **compiled[pass_section],
-            }
+        for pass_section, section_payload in self._compile_type_payload().items():
+            if isinstance(section_payload, dict):
+                merged[pass_section] = {
+                    **(merged.get(pass_section) or {}),
+                    **section_payload,
+                }
         return merged
 
     def _compile_type_payload(self) -> dict:
@@ -389,6 +458,7 @@ class ApplePassBuilder:
                     "headerFields": self._field_list(self.header_fields),
                     "auxiliaryFields": self._field_list(self.auxiliary_fields),
                     "backFields": self._field_list(self.back_fields) if self.include_back_fields else None,
+                    "footerFields": self._field_list(self.footer_fields),
                 }
             )
         }
@@ -419,7 +489,15 @@ class ApplePassBuilder:
         self.background_color = Color.from_rgb_string(payload.get("backgroundColor"))
         self.foreground_color = Color.from_rgb_string(payload.get("foregroundColor"))
         self.label_color = Color.from_rgb_string(payload.get("labelColor"))
-        self.barcode = Barcode.from_dict(payload["barcode"]) if payload.get("barcode") else None
+        if payload.get("barcodes"):
+            self.barcodes = [Barcode.from_dict(value) for value in payload["barcodes"]]
+        elif payload.get("barcode"):
+            self.barcodes = [Barcode.from_dict(payload["barcode"])]
+        else:
+            self.barcodes = []
+        self.featured_actions = [
+            FeaturedAction.from_dict(value) for value in payload.get("featuredActions", [])
+        ]
         self.relevant_date = self._parse_datetime(payload.get("relevantDate"))
         self.locations = [Location.from_dict(location) for location in payload.get("locations", [])]
         self.max_distance = payload.get("maxDistance")
@@ -428,13 +506,17 @@ class ApplePassBuilder:
         self.total_price = Price.from_dict(semantics["totalPrice"]) if semantics.get("totalPrice") else None
         self.wifi_details = [WifiNetwork.from_dict(value) for value in semantics.get("wifiAccess", [])]
 
-        pass_payload = payload.get(self.type.value, {})
+        pass_payload = self._pass_section_payload(payload)
         for field_type in FieldType:
             bucket = self._field_bucket(field_type)
             bucket.clear()
             for field in pass_payload.get(field_type.value, []):
                 hydrated = FieldContent.from_dict(field)
                 bucket[hydrated.key] = hydrated
+
+    def _pass_section_payload(self, payload: dict) -> dict:
+        section = payload.get(self.type.value, {})
+        return section if isinstance(section, dict) else {}
 
     def _field_list(self, fields: dict[str, FieldContent]) -> list[dict] | None:
         values = [field.to_dict() for field in fields.values()]
@@ -447,11 +529,19 @@ class ApplePassBuilder:
             FieldType.SECONDARY: self.secondary_fields,
             FieldType.AUXILIARY: self.auxiliary_fields,
             FieldType.BACK: self.back_fields,
+            FieldType.FOOTER: self.footer_fields,
         }
         return mapping[field_type]
 
     def _all_field_buckets(self) -> list[dict[str, FieldContent]]:
-        return [self.header_fields, self.primary_fields, self.secondary_fields, self.auxiliary_fields, self.back_fields]
+        return [
+            self.header_fields,
+            self.primary_fields,
+            self.secondary_fields,
+            self.auxiliary_fields,
+            self.back_fields,
+            self.footer_fields,
+        ]
 
     def _webservice_url(self) -> str | None:
         host = self._resolve_webservice_host()
@@ -492,10 +582,44 @@ class EventTicketPassBuilder(ApplePassBuilder):
 
 class GenericPassBuilder(ApplePassBuilder):
     type = PassType.GENERIC
+    include_back_fields = True
 
     @classmethod
     def validator_class(cls) -> type[ApplePassValidator]:
         return GenericApplePassValidator
+
+
+class PosterGenericPassBuilder(ApplePassBuilder):
+    type = PassType.POSTER_GENERIC
+    include_back_fields = True
+
+    @classmethod
+    def validator_class(cls) -> type[ApplePassValidator]:
+        return PosterGenericApplePassValidator
+
+    def _compile_type_payload(self) -> dict:
+        section = filter_empty(
+            {
+                "primaryFields": self._field_list(self.primary_fields),
+                "secondaryFields": self._field_list(self.secondary_fields),
+                "headerFields": self._field_list(self.header_fields),
+                "auxiliaryFields": self._field_list(self.auxiliary_fields),
+                "backFields": self._field_list(self.back_fields) if self.include_back_fields else None,
+                "footerFields": self._field_list(self.footer_fields),
+            }
+        )
+        # Emit classic generic alongside posterGeneric so iOS 26 and earlier can still add the pass.
+        return {
+            PassType.POSTER_GENERIC.value: section,
+            PassType.GENERIC.value: section,
+        }
+
+    def _pass_section_payload(self, payload: dict) -> dict:
+        for key in (PassType.POSTER_GENERIC.value, PassType.GENERIC.value):
+            section = payload.get(key)
+            if isinstance(section, dict):
+                return section
+        return {}
 
 
 class CouponPassBuilder(ApplePassBuilder):

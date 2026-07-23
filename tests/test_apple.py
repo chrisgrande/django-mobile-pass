@@ -31,7 +31,7 @@ class AppleBuilderTests(TestCase):
         self.assertEqual(mobile_pass.content["serialNumber"], "TICKET-0042")
         self.assertNotEqual(str(mobile_pass.pk), "TICKET-0042")
 
-    def test_event_ticket_serializes_back_fields_but_generic_does_not(self):
+    def test_event_ticket_and_generic_serialize_back_fields(self):
         event_payload = (
             EventTicketPassBuilder.make()
             .set_description("Event")
@@ -48,8 +48,88 @@ class AppleBuilderTests(TestCase):
         )
 
         self.assertEqual(event_payload["eventTicket"]["backFields"][0]["key"], "terms")
-        self.assertNotIn("backFields", generic_payload["generic"])
+        self.assertEqual(generic_payload["generic"]["backFields"][0]["key"], "terms")
 
+    def test_poster_generic_emits_poster_and_classic_generic_sections(self):
+        from django_mobile_pass.apple.builders import PosterGenericPassBuilder
+        from django_mobile_pass.enums import BarcodeType, FeaturedActionType
+
+        payload = (
+            PosterGenericPassBuilder.make()
+            .set_description("Gym membership")
+            .add_header_field("memberID", "102035", label="Guest No.")
+            .add_field("name", "Finley")
+            .add_footer_field("org", "Example Gym")
+            .set_barcode(BarcodeType.CODABAR, "123456789")
+            .add_barcode(BarcodeType.QR, "123456789")
+            .add_featured_action(
+                "offers", FeaturedActionType.MEMBERSHIP_BENEFITS, "https://example.com/offers"
+            )
+            .data()
+        )
+
+        self.assertIn("posterGeneric", payload)
+        self.assertIn("generic", payload)
+        self.assertEqual(payload["posterGeneric"], payload["generic"])
+        self.assertEqual(payload["posterGeneric"]["footerFields"][0]["key"], "org")
+        self.assertEqual(payload["barcodes"][0]["format"], BarcodeType.CODABAR.value)
+        self.assertEqual(payload["barcodes"][1]["format"], BarcodeType.QR.value)
+        self.assertEqual(payload["barcode"]["format"], BarcodeType.CODABAR.value)
+        self.assertEqual(payload["featuredActions"][0]["type"], "membershipBenefits")
+        self.assertEqual(payload["userInfo"]["passType"], PassType.POSTER_GENERIC.value)
+
+    def test_featured_actions_limited_to_two(self):
+        from django_mobile_pass.enums import FeaturedActionType
+        from django_mobile_pass.exceptions import InvalidPass
+
+        builder = (
+            GenericPassBuilder.make()
+            .set_description("Generic")
+            .add_field("member", "Ada")
+            .add_featured_action("a", FeaturedActionType.SHOP, "https://example.com/a")
+            .add_featured_action("b", FeaturedActionType.ORDER, "https://example.com/b")
+        )
+        with self.assertRaises(InvalidPass):
+            builder.add_featured_action("c", FeaturedActionType.CALL, "tel:+15555550100")
+
+    def test_new_barcode_types_serialize(self):
+        from django_mobile_pass.enums import BarcodeType
+
+        for barcode_type in (
+            BarcodeType.CODE39,
+            BarcodeType.CODABAR,
+            BarcodeType.EAN13,
+            BarcodeType.ITF,
+        ):
+            payload = (
+                GenericPassBuilder.make()
+                .set_description("Generic")
+                .add_field("member", "Ada")
+                .set_barcode(barcode_type, "123456789")
+                .data()
+            )
+            self.assertEqual(payload["barcode"]["format"], barcode_type.value)
+            self.assertEqual(payload["barcodes"][0]["format"], barcode_type.value)
+
+    def test_poster_generic_hydrates_from_stored_payload(self):
+        from django_mobile_pass.apple.builders import PosterGenericPassBuilder
+        from django_mobile_pass.enums import FeaturedActionType
+
+        mobile_pass = (
+            PosterGenericPassBuilder.make()
+            .set_description("Gym membership")
+            .add_field("name", "Finley")
+            .add_footer_field("org", "Example Gym")
+            .add_featured_action(
+                "offers", FeaturedActionType.MEMBERSHIP_BENEFITS, "https://example.com/offers"
+            )
+            .save()
+        )
+        builder = PosterGenericPassBuilder.hydrate(mobile_pass)
+        self.assertEqual(builder.primary_fields["name"].value, "Finley")
+        self.assertEqual(builder.footer_fields["org"].value, "Example Gym")
+        self.assertEqual(len(builder.featured_actions), 1)
+        self.assertEqual(mobile_pass.type, PassType.POSTER_GENERIC)
 
 class ApplePasskitRouteTests(TestCase):
     def setUp(self):
